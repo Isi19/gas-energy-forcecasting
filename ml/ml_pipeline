@@ -1,0 +1,139 @@
+import warnings
+import numpy as np
+import pandas as pd
+import pickle 
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import TimeSeriesSplit
+
+from sklearn.linear_model import RidgeCV, LassoCV
+
+import json
+from pathlib import Path
+
+warnings.filterwarnings('ignore')
+
+BASE_DIR = Path(__file__).resolve().parent
+
+DATA_PATH = BASE_DIR.parent / "data/data.xlsx"
+
+MODEL_OUTPUT_PATH = BASE_DIR / "artifacts"
+
+
+def load_data(path: Path = DATA_PATH) -> pd.DataFrame:
+    df = pd.read_excel(path)
+    return df
+
+# Transformation of consommation_kwh_pcs column
+
+
+def clean_conso(series: pd.Series) -> pd.Series:
+    """Conversion de '93 901' -> 93901 et maintien des NaN."""
+    s = series.astype(str).str.replace(r"\s+", "", regex=True)
+    s = s.replace("nan", np.nan)
+    return pd.to_numeric(s, errors="coerce")
+
+# add features
+
+
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Feature engineering on the dataframe."""
+    df = df.copy()
+
+    # Month cyclic encoding
+    df["mois"] = df["d_relevé"].dt.month.astype(int)
+    # la variable mois est cyclique, on utilise des transformations sin et cos pour capturer cette cyclicité
+    df["mois_sin"] = np.sin(2 * np.pi * df["mois"] / 12.0)
+    df["mois_cos"] = np.cos(2 * np.pi * df["mois"] / 12.0)
+
+    return df
+
+
+def train_tuning_select(X_train, y_train, X_test, y_test, tscv, metric="neg_mean_absolute_error"):
+
+    print(f"\n{'='*80}")
+    print(f"FINE-TUNING (Metric: MAE) FOR RIDGE REGRESSION")
+    print(f"{'='*80}")
+    metrics_results = []
+    # ridge model
+    ridgecv = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", RidgeCV(scoring=metric, cv=tscv)),
+    ])
+    ridgecv.fit(X_train, y_train)
+
+    # Summary table
+    print("\n\n" + "="*80)
+    print("BEST ALPHA - METRICS FOR RIDGE REGRESSION")
+    print("="*80)
+
+    # Select best alpha based on MAE
+    best_alpha = ridgecv.named_steps['model'].alpha_
+    best_mae = -ridgecv.named_steps["model"].best_score_
+    print(
+        f"\n✓ Best alpha for Ridge: {ridgecv.named_steps['model'].alpha_} with an mae of {best_mae:.2f}")
+
+    print(f"\n\n{'='*80}")
+    print(f"✓ BEST RIDGE IS : RIDGE WITH ALPHA = {best_alpha}")
+    print(f"{'='*80}")
+
+    y_pred = ridgecv.predict(X_test)
+    mae = mean_absolute_error(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    r2 = r2_score(y_test, y_pred)
+    metrics_results.append({
+        "model": "RidgeCV",
+        "alpha": best_alpha,
+        "MAE": mae,
+        "RMSE": rmse,
+        "R2": r2
+    })
+    print(f"\n✓ Ridge Regression - Metrics on Test data(Never Seen data): ")
+    print(f"   - RMSE: {rmse:.4f}")
+    print(f"   - MAE: {mae:.4f}")
+    print(f"   - R2: {r2:.4f}")
+    return ridgecv, metrics_results
+
+
+def main():
+    df = load_data(DATA_PATH)
+    # Prepare data
+    # clean consommation_kwh_pcs column
+    df["consommation_kwh_pcs"] = clean_conso(df["consommation_kwh_pcs"])
+    dates_predict = df[df['periode_reference'] == False]['f_relevé'].to_list()
+    df = add_features(df)
+    data_train = df[df['periode_reference'] == True].copy()
+    data_train = data_train.sort_values('d_relevé').reset_index(drop=True)
+
+    # Features and target
+    X = data_train[['dju', 'mois_sin', 'mois_cos']].copy()
+    y = data_train['consommation_kwh_pcs'].copy()
+
+    # Spplinting data
+    idx_split = int(0.8 * len(data_train))
+    X_train, X_test = X.iloc[:idx_split], X.iloc[idx_split:]
+    y_train, y_test = y.iloc[:idx_split], y.iloc[idx_split:]
+
+    tscv = TimeSeriesSplit(n_splits=3)
+    best_estimator, metrics_results = train_tuning_select(
+        X_train, y_train, X_test, y_test, tscv)
+    # Save the best model
+    with open(MODEL_OUTPUT_PATH / "estimator_model.pkl", "wb") as f:
+        pickle.dump(best_estimator, f)
+
+    print(" Le modèle a été bien enregistré dans le dossier artifacts")
+    # Save the metrics
+    with open(MODEL_OUTPUT_PATH / "metrics.json", 'w') as f:
+        json.dump(metrics_results, f)
+
+    print(" Le fichier json a été bien enregistré dans le dossier artifacts")
+
+    # save the dates used for prediction
+    with open(MODEL_OUTPUT_PATH / "dates_predict.json", 'w') as f:
+        json.dump([str(date) for date in dates_predict], f)
+    print(" Le fichier des dates de prédiction a été bien enregistré dans le dossier artifacts")
+
+
+if __name__ == "__main__":
+    main()
