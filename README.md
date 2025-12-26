@@ -25,7 +25,7 @@ Vérifier :
 
 ## 2️⃣ Structure du projet
 
-    Gas-energy-prediction/
+    gas-energy-prediction/
     ├── backend/
     │   ├── ...
     │   ├── prediction/
