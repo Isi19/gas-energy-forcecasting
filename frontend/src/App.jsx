@@ -29,7 +29,7 @@ export default function App() {
           <Typography variant="h4" fontWeight={700}>Prévision de la consommation d'énergie d'un bâtiment</Typography>
           <Typography variant="body2" color="text.secondary">Prévoir la consommation et suivre l'historique.</Typography>
         </Box>
-        <Chip color="primary" label="API : http://127.0.0.1:8000/api" />
+        {/* <Chip color="primary" label="API : http://127.0.0.1:8000/api" /> */}
       </Stack>
 
       <Grid container spacing={2} alignItems="stretch">
