@@ -1,0 +1,33 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python / Django
+venv/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.egg-info/
+.env
+.env.local
+
+# Django static/media (générés)
+/backend/staticfiles/
+/backend/media/
+
+# Frontend / Vite
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/.env
+/frontend/.env.local
+
+gas_analysis copy.ipynb
+package-lock.json
+ml/artifacts/*
