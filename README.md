@@ -1,4 +1,4 @@
-# 🔥 GAS Energy Prediction
+# 🔥 GAS Energy Forecsating
 
 Application end-to-end pour prédire la **consommation mensuelle de gaz**
 d'un bâtiment :
@@ -102,10 +102,10 @@ Lancer :
 ➡️ API : http://127.0.0.1:8000/api/
 
 Endpoints utiles (base: http://127.0.0.1:8000/api) :
-- `GET /predict-dates/` : dates autorisees
+- `GET /predict-dates/` : dates autorisées
 - `POST /predict/` : corps JSON `{ "jour": "YYYY-MM-DD", "input_type": "temperature|dju", "input_value": number }`
-- `GET /metrics/` : metriques du modele
-- `GET /prediction-history/` : historique des predictions
+- `GET /metrics/` : métriques du modele
+- `GET /prediction-history/` : historique des prédictions
 
 ------------------------------------------------------------------------
 
