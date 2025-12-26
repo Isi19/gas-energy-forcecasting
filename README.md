@@ -93,7 +93,9 @@ Installer :
 
 Migrer :
 
+    python manage.py makemigrations prediction
     python manage.py migrate
+
 
 Lancer :
 
